@@ -925,6 +925,11 @@ app.get("/reviews", async (req, res) => {
     });
 
     if (!process.env.VERCEL) {
+      // Global 404 handler for API
+      app.use((req, res) => {
+        res.status(404).json({ error: "API Route not found" });
+      });
+
       app.listen(port, () => {
         console.log(`Server running on port ${port}`);
       });
