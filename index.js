@@ -874,9 +874,18 @@ app.get("/reviews", async (req, res) => {
   }
 }
 
-run();
+const readyPromise = run();
 
-module.exports = app;
+module.exports = async (req, res) => {
+  try {
+    await readyPromise;
+    return app(req, res);
+  } catch (err) {
+    console.error("Server initialization failed:", err);
+    res.statusCode = 500;
+    return res.end("Internal Server Error");
+  }
+};
 
 // const express = require("express");
 // const cors = require("cors");
