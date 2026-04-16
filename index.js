@@ -3,9 +3,9 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
 dotenv.config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -827,6 +827,56 @@ app.get("/reviews", async (req, res) => {
       } catch (error) {
         console.error("Add offer error:", error);
         res.status(500).json({ success: false, error: "Failed to add offer" });
+      }
+    });
+
+    // ===== PAYMENT ROUTES =====
+    app.post("/create-payment-intent", async (req, res) => {
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(amount * 100), // amount in cents
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.error("Payment intent error:", error);
+        res.status(500).send({ error: error.message });
+      }
+    });
+
+    // (Optional) Checkout session route if needed by MyOffer.jsx
+    app.post("/create-checkout-session", async (req, res) => {
+      const { offerId, amount } = req.body;
+      try {
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: { name: "Property Offer Payment" },
+                unit_amount: Math.round(amount * 100),
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          success_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard/offer?session_id={CHECKOUT_SESSION_ID}&offer_id=${offerId}&amount=${amount}`,
+          cancel_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard/offer`,
+        });
+        res.json({ url: session.url });
+      } catch (error) {
+        console.error("Checkout session error:", error);
+        res.status(500).json({ error: error.message });
       }
     });
 
