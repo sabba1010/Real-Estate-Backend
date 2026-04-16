@@ -803,13 +803,24 @@ app.get("/reviews", async (req, res) => {
         if (!offer.userEmail || !offer.propertyId || !offer.offerPrice)
           return res.status(400).json({ success: false, error: "Missing required fields" });
 
-        offer.createdAt = new Date();
-
         if (typeof offer.propertyId === "string" && ObjectId.isValid(offer.propertyId)) {
           offer.propertyId = new ObjectId(offer.propertyId);
         } else if (!(offer.propertyId instanceof ObjectId)) {
           return res.status(400).json({ error: "Invalid propertyId format" });
         }
+
+        // Prevent duplicate offers from the same user for the same property.
+        const existingOffer = await offersCollection.findOne({
+          userEmail: offer.userEmail,
+          propertyId: offer.propertyId,
+          buyingDate: offer.buyingDate,
+        });
+
+        if (existingOffer) {
+          return res.status(409).json({ success: false, error: "You already submitted an offer for this property on that date." });
+        }
+
+        offer.createdAt = new Date();
 
         const result = await offersCollection.insertOne(offer);
         res.status(201).json({ success: true, insertedId: result.insertedId });
