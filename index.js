@@ -14,8 +14,10 @@ const port = process.env.PORT || 5000;
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "http://localhost:5173",
+  "https://realest-tau.vercel.app",
   "https://realest-tau.vercel.app/",
   "https://real-ested-hazel.vercel.app",
+  "https://real-ested-hazel.vercel.app/",
 ].filter(Boolean);
 
 app.use(
@@ -861,9 +863,11 @@ app.get("/reviews", async (req, res) => {
       }
     });
 
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+      });
+    }
   } catch (err) {
     console.error(err);
     process.exit(1);
@@ -871,6 +875,8 @@ app.get("/reviews", async (req, res) => {
 }
 
 run();
+
+module.exports = app;
 
 // const express = require("express");
 // const cors = require("cors");
